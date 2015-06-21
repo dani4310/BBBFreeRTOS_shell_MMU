@@ -1,0 +1,9 @@
+cscope.in.out
+cscope.out
+cscope.po.out
+tags
+*.o
+*.swp
+*~
+rtosdemo-a.bin
+rtosdemo-a.elf
