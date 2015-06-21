@@ -5,13 +5,14 @@ FreeRTOS for BeagleBone Black
 
 ----------------------
 source:https://github.com/henfos/BBBFreeRTOS
+
 I add shell(including Input serial) and MMU function
 
 Makefile located in in Demo/AM3359_BeagleBone_GCC/
+
 command:make && make app
 
-copy the MLO(made from ti StarterWare) and app into microsd card 
-push S2 button and turn on beaglebone black
+copy the MLO(made from ti StarterWare) and app into microsd card ,then push S2 button and turn on beaglebone black
 
 Working:
 - System tick
