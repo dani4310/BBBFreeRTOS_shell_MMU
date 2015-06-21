@@ -2,9 +2,11 @@ BBBFreeRTOS
 ===========
 
 FreeRTOS for BeagleBone Black
-source:https://github.com/henfos/BBBFreeRTOS
 
 ----------------------
+source:https://github.com/henfos/BBBFreeRTOS
+I add shell(including Input serial) and MMU function
+
 Makefile located in in Demo/AM3359_BeagleBone_GCC/
 command:make && make app
 
