@@ -48,30 +48,30 @@ void serial_putsn (unsigned int base, const char *s, int n)
 	}
 }
 
-unsigned int UARTRegConfigModeEnable(unsigned int baseAdd, unsigned int modeFlag)
-{
-    unsigned int lcrRegValue = 0;
+// unsigned int UARTRegConfigModeEnable(unsigned int baseAdd, unsigned int modeFlag)
+// {
+//     unsigned int lcrRegValue = 0;
 
-    /* Preserving the current value of LCR. */
-    lcrRegValue = HWREG(baseAdd + UART_LCR);
+//     /* Preserving the current value of LCR. */
+//     lcrRegValue = HWREG(baseAdd + UART_LCR);
 
-    switch(modeFlag)
-    {
-        case UART_REG_CONFIG_MODE_A:
-        case UART_REG_CONFIG_MODE_B:
-            HWREG(baseAdd + UART_LCR) = (modeFlag & 0xFF);
-        break;
+//     switch(modeFlag)
+//     {
+//         case UART_REG_CONFIG_MODE_A:
+//         case UART_REG_CONFIG_MODE_B:
+//             HWREG(baseAdd + UART_LCR) = (modeFlag & 0xFF);
+//         break;
 
-        case UART_REG_OPERATIONAL_MODE:
-            HWREG(baseAdd + UART_LCR) &= 0x7F;
-        break;
+//         case UART_REG_OPERATIONAL_MODE:
+//             HWREG(baseAdd + UART_LCR) &= 0x7F;
+//         break;
 
-        default:
-        break;
-    }
+//         default:
+//         break;
+//     }
 
-    return lcrRegValue;
-}
+//     return lcrRegValue;
+// }
 
 signed char UARTCharGet(unsigned int baseAdd)
 {
@@ -79,7 +79,7 @@ signed char UARTCharGet(unsigned int baseAdd)
     signed char retVal = 0; 
 
     /* Switching to Register Operational Mode of operation. */
-    lcrRegValue = UARTRegConfigModeEnable(baseAdd, UART_REG_OPERATIONAL_MODE);
+ //   lcrRegValue = UARTRegConfigModeEnable(baseAdd, UART_REG_OPERATIONAL_MODE);
 
     /* Waits indefinitely until a byte arrives in the RX FIFO(or RHR). */
     while(0 == (HWREG(baseAdd + UART_LSR) & UART_LSR_RX_FIFO_E));
@@ -87,7 +87,7 @@ signed char UARTCharGet(unsigned int baseAdd)
     retVal = ((signed char)HWREG(baseAdd + UART_RHR));
 
     /* Restoring the value of LCR. */
-    HWREG(baseAdd + UART_LCR) = lcrRegValue;
+ //   HWREG(baseAdd + UART_LCR) = lcrRegValue;
 
     return retVal;
 }
