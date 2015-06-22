@@ -90,10 +90,8 @@ DEMO_SOURCE_DIR=../Common/Minimal
 #
 THUMB_SRC = \
 main.c \
-cp15.S \
 serial.c \
 syscalls.c \
-host.c \
 shell.c \
 $(DEMO_SOURCE_DIR)/integer.c \
 $(DEMO_SOURCE_DIR)/PollQ.c \
@@ -108,6 +106,8 @@ $(RTOS_SOURCE_DIR)/portable/MemMang/heap_2.c \
 $(RTOS_SOURCE_DIR)/portable/GCC/AM335_BeagleBone/port.c \
 mmu_dump.c 
 
+ASM_SRC = \
+cp15.S
 #
 # Source files that must be built to ARM mode.
 #
@@ -117,8 +117,9 @@ ARM_SRC = $(RTOS_SOURCE_DIR)/portable/GCC/AM335_BeagleBone/portISR.c
 #
 ARM_OBJ = $(ARM_SRC:.c=.o)
 THUMB_OBJ = $(THUMB_SRC:.c=.o)
-THUMB_DOBJ = $(THUMB_OBJ:.S=.o)
+
 IMG_LOAD_ADDR=0x80500000
+
 ifeq ($(USE_THUMB_MODE),YES)
 	TARGET=rtosdemo-t
 else
@@ -131,8 +132,8 @@ $(TARGET).bin : $(TARGET).elf
 $(TARGET).hex : $(TARGET).elf
 	$(OBJCOPY) $(TARGET).elf -O ihex $(TARGET).hex
 
-$(TARGET).elf : $(ARM_OBJ) $(THUMB_OBJ) $(CRT0) Makefile
-	$(CC) $(CFLAGS) $(ARM_OBJ) $(THUMB_OBJ) -nostartfiles $(CRT0) $(LINKER_FLAGS)
+$(TARGET).elf : $(ARM_OBJ) $(THUMB_OBJ) $(CRT0) $(ASM_SRC) Makefile
+	$(CC) $(CFLAGS) $(ARM_OBJ) $(THUMB_OBJ) $(ASM_SRC) -nostartfiles $(CRT0) $(LINKER_FLAGS)
 
 $(THUMB_OBJ) : %.o : %.c $(LDSCRIPT) Makefile
 	$(CC) -c $(THUMB_FLAGS) $(CFLAGS) $< -o $@
@@ -143,6 +144,6 @@ app:rtosdemo-a.bin
 	cd tools;gcc tiimage.c -o a.out; cd -
 	./tools/a.out $(IMG_LOAD_ADDR) NONE rtosdemo-a.bin $@
 clean :
-	rm -rf $(ARM_OBJ) $(THUMB_DOBJ) app
+	rm -rf $(ARM_OBJ) $(THUMB_OBJ) app
 	rm -rf $(TARGET).elf $(TARGET).hex $(TARGET).map $(TARGET).bin
 	touch Makefile
