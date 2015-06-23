@@ -86,7 +86,7 @@ void serial_putsn (unsigned int base, const char *s, int n);
 void serial_putc (unsigned int base,const char c);
 void serial_puts (unsigned int base,const char *s);
 signed char UARTCharGet(unsigned int baseAdd);
-unsigned int UARTRegConfigModeEnable(unsigned int baseAdd, unsigned int modeFlag);
+//unsigned int UARTRegConfigModeEnable(unsigned int baseAdd, unsigned int modeFlag);
 int io_printf(unsigned int base, const char *format, ...);
 void io_write(int base,const char* buf,int length);
 int io_read( int base ,void * buf, int count) ;

@@ -143,9 +143,9 @@ static void mmu_dump_sections(unsigned int vaddr, unsigned int entry)
         xn = entry & 0x10;
         mmu_get_perms(ap2, ap1, &ur, &uw, &pr, &pw);
         paddr = ss ? entry & 0xFF000000 : entry & 0xFFF00000;
-        if(vaddr!=paddr)
-            io_printf(UART0_BASE,"diff  ");
-        io_printf(UART0_BASE,"entry=%p [0x%p] %s PA:0x%p NG:%d SH:%d UR:%d UW:%d PR:%d PW:%d XN:%d NS:%d DOM:%X\n\r\r",entry, vaddr, ss ? "S-Section " : "Section   ", paddr, !!ng, !!s, !!ur, !!uw, !!pr, !!pw, !!xn, !!ns, domain);
+        // if(vaddr!=paddr)
+        //     io_printf(UART0_BASE,"diff  ");
+        io_printf(UART0_BASE,"[0x%p] %s PA:0x%p NG:%d SH:%d UR:%d UW:%d PR:%d PW:%d XN:%d NS:%d DOM:%X\n\r\r", vaddr, ss ? "S-Section " : "Section   ", paddr, !!ng, !!s, !!ur, !!uw, !!pr, !!pw, !!xn, !!ns, domain);
     }
     else if ((entry & 0x3) == 1) /* page table */
     {
@@ -153,7 +153,7 @@ static void mmu_dump_sections(unsigned int vaddr, unsigned int entry)
         ns = entry & 8;
         paddr = entry & 0xFFFFFC00;
         tbl = (unsigned int *)pa2va(paddr);
-        io_printf(UART0_BASE,"entry=%p [0x%p] %s PA:0x%p VA:0x%p NS:%d DOM:%X\n\r",entry, vaddr, "Page TBL  ", paddr, tbl, !!ns, domain);
+        io_printf(UART0_BASE,"[0x%p] %s PA:0x%p VA:0x%p NS:%d DOM:%X\n\r", vaddr, "Page TBL  ", paddr, tbl, !!ns, domain);
         for (i = 0; i < 0x100; i++)
         {
             mmu_dump_pages(vaddr+(i<<12), tbl[i]);
@@ -161,11 +161,11 @@ static void mmu_dump_sections(unsigned int vaddr, unsigned int entry)
     }
     else if ((entry & 0x3) == 0) /* not mapped */
     {
-        io_printf(UART0_BASE,"entry=%p [0x%p] %s\n\r",entry, vaddr, "Unmapped  ");
+        io_printf(UART0_BASE,"[0x%p] %s\n\r", vaddr, "Unmapped  ");
     }
     else
     {
-        io_printf(UART0_BASE,"entry=%p [0x%p] %s\n\r",entry, vaddr, "Invalid   ");
+        io_printf(UART0_BASE,"[0x%p] %s\n\r", vaddr, "Invalid   ");
     }
 }
 
@@ -244,8 +244,8 @@ int start_mmu(void)
     CP15DomainAccessClientSet();
     /* set page table */
     mmu_setmtt(0x00000000, 0xFFFFFFFF, 0x00000000, RW_NCNB);    /* None cached for 4G memory    */
-    mmu_setmtt(0x90000000, 0xB0000000-1, 0xA0600000, RW_CB);    /* 128M cached DDR memory       */
-    mmu_setmtt(0xB0000000, 0xD8000000-1, 0xA0600000, RW_NCNB);  /* 128M none-cached DDR memory */
+    mmu_setmtt(0x90000000, 0xB0000000-1, 0xA0600000, RW_CB);    /* cached DDR memory       */
+    mmu_setmtt(0xB0000000, 0xD8000000-1, 0xA0600000, RW_NCNB);  /* none-cached DDR memory */
     mmu_setmtt(0x80000000, 0x80020000-1, 0x80000000, RW_CB);    /* 128k OnChip memory           */
 
     CP15Ttb0Set((unsigned int*) _page_table);
@@ -255,11 +255,10 @@ int start_mmu(void)
 
     __asm__("mrc p15,0,%0,c1,c0,0" : "=r" (sctlr));
     __asm__("orr %0,%1,#1 ":"=r"(result):"r"(sctlr));
-    io_printf(UART0_BASE,"sctlr = %p \r\n",sctlr );
+    io_printf(UART0_BASE,"\n\rsctlr = %p \r\n",sctlr );
     afe = sctlr & 0x20000000;
     io_printf(UART0_BASE,"afe = %d\r\n",afe);
-
+    io_printf(UART0_BASE,"!!!mmu sart!!!");
  //   mmu_dump();
-
     return 0;
 }
