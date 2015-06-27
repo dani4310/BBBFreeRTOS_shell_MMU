@@ -28,6 +28,17 @@ static int afe;
 #define RW_NCNB     (AP_RW|DOMAIN0|NCNB|DESC_SEC)   /* Read/Write without cache and write buffer */
 #define RW_CB       (AP_RW|DOMAIN0|CB|DESC_SEC)     /* Read/Write, cache, write back */
 
+/**********************************************************/
+#define DESC_ONE        (0x1)
+#define DOMAIN1         (0x1<<5)
+#define ATTR_INNER      (DESC_ONE | DOMAIN1)
+#define RW_FA           ((0<<9)|(3<<4)) //AP[2] | AP[1:0], read/write full access
+#define WB_WA           (7 << 6) //TEX ,write back ,write allocate
+#define S               (1<<10) //sharable
+#define nG              (1<<11) // non global
+#define ATTR_OUTER      (DESC_SEC | RW_FA | WB_WA | S | nG)
+
+
 static unsigned int pa2va(unsigned int pa)
 {
     unsigned int va;
@@ -38,7 +49,7 @@ static unsigned int pa2va(unsigned int pa)
     va = 0;
     for (i = 0; i < 0x100000; i++)
     {
-        vaddr =  i<< 12;
+        vaddr = i << 12;
         /*physical address is translated to virtual address*/
         __asm__("mcr p15,0,%1,c7,c8,0\n\r\t"
                 "mrc p15,0,%0,c7,c4,0\n\r\t" : "=r" (paddr) : "r" (vaddr));
@@ -143,8 +154,7 @@ static void mmu_dump_sections(unsigned int vaddr, unsigned int entry)
         xn = entry & 0x10;
         mmu_get_perms(ap2, ap1, &ur, &uw, &pr, &pw);
         paddr = ss ? entry & 0xFF000000 : entry & 0xFFF00000;
-        // if(vaddr!=paddr)
-        //     io_printf(UART0_BASE,"diff  ");
+
         io_printf(UART0_BASE,"[0x%p] %s PA:0x%p NG:%d SH:%d UR:%d UW:%d PR:%d PW:%d XN:%d NS:%d DOM:%X\n\r\r", vaddr, ss ? "S-Section " : "Section   ", paddr, !!ng, !!s, !!ur, !!uw, !!pr, !!pw, !!xn, !!ns, domain);
     }
     else if ((entry & 0x3) == 1) /* page table */
@@ -171,6 +181,7 @@ static void mmu_dump_sections(unsigned int vaddr, unsigned int entry)
 
 int mmu_dump(void)
 {
+    int contextid;
     unsigned int ttbr[2];
     int ttbcr;
     int n;
@@ -178,7 +189,7 @@ int mmu_dump(void)
     int paddr;
     unsigned int *ttb_vaddr[2];
     unsigned int entry;
-    int contextid;
+
     __asm__("mrc p15,0,%0,c2,c0,0" : "=r" (ttbr[0]));//Translation Table Base Register 0
     __asm__("mrc p15,0,%0,c2,c0,1" : "=r" (ttbr[1]));//Translation Table Base Register 1
     __asm__("mrc p15,0,%0,c2,c0,2" : "=r" (ttbcr));//Translation Table Base Control Register
@@ -196,14 +207,12 @@ int mmu_dump(void)
     for (i = 0; i < (1 << 12 - n); i++)
     {
         entry = ttb_vaddr[0][i];
-        //io_printf(UART0_BASE,"  i=%d  addr_of_ttb_vaddr=%p ",i,&ttb_vaddr[0][i]);
         __asm__("DSB");
         __asm__("mrc p15, 0,%0,c13,c0,1":"=r"(contextid));
-        if(contextid!=0)
-        io_printf(UART0_BASE,"\r\n\r\n\r\ncontext id is %p\r\n", contextid);
+        io_printf(UART0_BASE,"context id is %p\r\n", contextid);
 
+        io_printf(UART0_BASE,"  i  = %d , entry = %p  ", i,entry);
         mmu_dump_sections(i<<20, entry);
-
     }
 
 
@@ -219,6 +228,7 @@ int mmu_dump(void)
 }
 
 static volatile unsigned int _page_table[4*1024] __attribute__((aligned(16*1024)));
+// static volatile unsigned int _page_table2[256] __attribute__((aligned(4*1024)));//small page
 void mmu_setmtt(unsigned int vaddrStart, unsigned int vaddrEnd, unsigned int paddrStart, unsigned int attr)
 {
     volatile unsigned int *pTT;
@@ -231,11 +241,28 @@ void mmu_setmtt(unsigned int vaddrStart, unsigned int vaddrEnd, unsigned int pad
         pTT++;
     }
 }
+//set Small Page Table
+void mmu_setpg(unsigned int vaddrStart,unsigned int pageTableBassAddress,
+                unsigned int paddrStart)
+{
+    volatile unsigned int *pTT;
+    volatile unsigned int *pTT2;
+    volatile int j;
+    pTT=(unsigned int *)_page_table+(vaddrStart>>20);
+    pTT2=(unsigned int *)pageTableBassAddress;
+    *pTT = ATTR_INNER | ((pageTableBassAddress>>10)<<10);
+
+    for(j =0; j < 256 ; j++){
+        *pTT2 = ATTR_OUTER | (((paddrStart>>12)+j)<<12);
+        pTT2++;
+    }
+}
 
 int start_mmu(void)
 {
     unsigned int sctlr;
     int result;
+
 
     CP15DCacheDisable();
     CP15ICacheDisable();
@@ -244,21 +271,24 @@ int start_mmu(void)
     CP15DomainAccessClientSet();
     /* set page table */
     mmu_setmtt(0x00000000, 0xFFFFFFFF, 0x00000000, RW_NCNB);    /* None cached for 4G memory    */
-    mmu_setmtt(0x90000000, 0xB0000000-1, 0xA0600000, RW_CB);    /* cached DDR memory       */
-    mmu_setmtt(0xB0000000, 0xD8000000-1, 0xA0600000, RW_NCNB);  /* none-cached DDR memory */
+    mmu_setmtt(0xC0000000, 0xC8000000-1, 0xC0000000, RW_CB);    /* 128M cached DDR memory       */
+    mmu_setmtt(0xD0000000, 0xD8000000-1, 0xC0000000, RW_NCNB);  /* 128M none-cached DDR memory */
     mmu_setmtt(0x80000000, 0x80020000-1, 0x80000000, RW_CB);    /* 128k OnChip memory           */
+    mmu_setpg(0x90000000,0xA0600000,0xC0000000);
+    mmu_setpg(0x90100000,0xA0700000,0xC0000000);
+    mmu_setpg(0x90200000,0xA0800000,0xC0000000);
 
     CP15Ttb0Set((unsigned int*) _page_table);
     CP15MMUEnable();
     CP15ICacheEnable();
     CP15DCacheEnable();
-
     __asm__("mrc p15,0,%0,c1,c0,0" : "=r" (sctlr));
     __asm__("orr %0,%1,#1 ":"=r"(result):"r"(sctlr));
-    io_printf(UART0_BASE,"\n\rsctlr = %p \r\n",sctlr );
+    io_printf(UART0_BASE,"sctlr = %p \r\n",sctlr );
     afe = sctlr & 0x20000000;
     io_printf(UART0_BASE,"afe = %d\r\n",afe);
-    io_printf(UART0_BASE,"!!!mmu sart!!!");
- //   mmu_dump();
+
+   // mmu_dump();
+
     return 0;
 }
